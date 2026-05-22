@@ -35,14 +35,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image (no model download in CI)
+      - name: Create empty model_weights dir for CI build
+        run: mkdir -p model_weights
+
+      - name: Build image (no model weights in CI)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: infra/docker/Dockerfile.serve
           push: false
-          build-args: |
-            SKIP_MODEL_DOWNLOAD=true
           tags: vlm-action-captioning:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max

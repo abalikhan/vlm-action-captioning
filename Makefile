@@ -26,6 +26,7 @@ serve-local:
 	uvicorn serving.app.main:app --reload --port 8000
 
 build-image:
+	mkdir -p model_weights
 	docker build \
 		-f infra/docker/Dockerfile.serve \
 		-t $(IMAGE_NAME):$(IMAGE_TAG) \

@@ -55,8 +55,3 @@ CMD ["python3.11", "-m", "uvicorn", "serving.app.main:app", \
      "--host", "0.0.0.0", \
      "--port", "8000", \
      "--workers", "1"]
-
-ARG SKIP_MODEL_DOWNLOAD=false
-RUN if [ "$SKIP_MODEL_DOWNLOAD" = "false" ]; then \
-      python infra/docker/download_model.py; \
-    fi

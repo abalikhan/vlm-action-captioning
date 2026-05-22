@@ -222,3 +222,4 @@ model_weights/
 *.bin
 *.safetensors
 *.gguf
+.hf-cache/
