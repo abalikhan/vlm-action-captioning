@@ -218,3 +218,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 model_weights/
+model_weights/
+*.bin
+*.safetensors
+*.gguf
