@@ -1,11 +1,12 @@
+import os
+import time
 import torch
+from pathlib import Path
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
-from pathlib import Path
-import time
 
 
-MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"
+MODEL_ID = os.environ.get("MODEL_PATH", "Qwen/Qwen2-VL-2B-Instruct")
 
 # these are the generation defaults we will tune later
 GENERATION_CONFIG = {

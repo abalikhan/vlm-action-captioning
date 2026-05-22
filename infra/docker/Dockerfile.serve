@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1
+FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV HF_HOME=/app/.cache/huggingface
+ENV PYTHONPATH=/app
+ENV MODEL_PATH=/app/model_weights
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    libgl1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# bootstrap pip for python3.11 (Ubuntu strips ensurepip from apt packages)
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
+
+# bake model weights from local directory — no network needed at build time
+COPY model_weights/ /app/model_weights/
+
+# install torch separately due to custom index
+RUN python3.11 -m pip install --no-cache-dir \
+    "torch==2.11.0" \
+    "torchvision" \
+    --index-url https://download.pytorch.org/whl/cu130
+
+COPY serving/ serving/
+
+# install infer + api deps; quoted to prevent shell redirection of >=
+RUN python3.11 -m pip install --no-cache-dir \
+    "transformers>=4.45.0" \
+    "qwen-vl-utils>=0.0.8" \
+    "accelerate>=0.34.0" \
+    "pillow>=10.0.0" \
+    "decord>=0.6.0" \
+    "av>=12.0.0" \
+    "fastapi>=0.115.0" \
+    "uvicorn>=0.30.0" \
+    "python-multipart>=0.0.12"
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["python3.11", "-m", "uvicorn", "serving.app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "1"]
+
+ARG SKIP_MODEL_DOWNLOAD=false
+RUN if [ "$SKIP_MODEL_DOWNLOAD" = "false" ]; then \
+      python infra/docker/download_model.py; \
+    fi

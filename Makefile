@@ -1,4 +1,7 @@
-.PHONY: install lint test train-local build-image
+.PHONY: install lint test train-local build-image run-container run-container-cpu push-ecr
+
+IMAGE_NAME=vlm-action-captioning
+IMAGE_TAG=latest
 
 install:
 	uv sync --extra train --extra serve --extra dev
@@ -19,8 +22,28 @@ train-full:
 	python training/scripts/train.py \
 		--config training/configs/full_train.yaml
 
-build-image:
-	docker build -f infra/docker/Dockerfile.serve -t vlm-action-captioning:latest .
-
 serve-local:
 	uvicorn serving.app.main:app --reload --port 8000
+
+build-image:
+	docker build \
+		-f infra/docker/Dockerfile.serve \
+		-t $(IMAGE_NAME):$(IMAGE_TAG) \
+		.
+
+run-container:
+	docker run --gpus all \
+		-p 8000:8000 \
+		-e HF_HOME=/app/.cache/huggingface \
+		$(IMAGE_NAME):$(IMAGE_TAG)
+
+run-container-cpu:
+	docker run \
+		-p 8000:8000 \
+		$(IMAGE_NAME):$(IMAGE_TAG)
+
+push-ecr:
+	aws ecr get-login-password --region $(AWS_REGION) | \
+		docker login --username AWS --password-stdin $(ECR_REGISTRY)
+	docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(ECR_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+	docker push $(ECR_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)

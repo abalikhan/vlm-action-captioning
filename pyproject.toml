@@ -6,8 +6,8 @@ requires-python = ">=3.11"
 
 [project.optional-dependencies]
 infer = [
-    "torch>=2.4.0",
-    "torchvision>=0.19.0",
+    "torch>=2.11.0",
+    "torchvision>=0.22.0",
     "transformers>=4.45.0",
     "qwen-vl-utils>=0.0.8",
     "accelerate>=0.34.0",
