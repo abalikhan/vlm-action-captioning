@@ -1,14 +1,14 @@
 .PHONY: install lint test train-local build-image
 
 install:
-	pip install -e ".[train,serve,dev]"
+	uv sync --extra train --extra serve --extra dev
 
 lint:
 	ruff check . --fix
 	ruff format .
 
 test:
-	pytest tests/ -v
+	.venv/bin/pytest tests/ -v
 
 train-local:
 	python training/scripts/train.py \
