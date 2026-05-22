@@ -1,5 +1,6 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 from fastapi.testclient import TestClient
 
 
@@ -20,6 +21,7 @@ def mock_captioner():
 def client(mock_captioner):
     with patch("serving.app.main.ActionCaptioner", return_value=mock_captioner):
         from serving.app.main import app
+
         with TestClient(app) as c:
             yield c
 
@@ -43,7 +45,7 @@ def test_caption_upload_invalid_format(client):
 def test_caption_upload_valid(client, tmp_path):
     fake_video = tmp_path / "test.mp4"
     fake_video.write_bytes(b"fake video content")
-    
+
     with open(fake_video, "rb") as f:
         response = client.post(
             "/caption/upload",

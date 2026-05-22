@@ -1,4 +1,5 @@
 """Stub out heavy ML dependencies so unit tests run without GPU/torch installed."""
+
 import sys
 from unittest.mock import MagicMock
 

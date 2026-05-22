@@ -2,7 +2,9 @@
 
 Uses snapshot_download so no model class (and its import-time deps) is needed.
 """
+
 import os
+
 from huggingface_hub import snapshot_download
 
 MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"

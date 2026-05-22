@@ -1,15 +1,13 @@
+import shutil
+import tempfile
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
-import tempfile
-import shutil
 
 from serving.app.inference import ActionCaptioner
-
 
 # global model instance, loaded once at startup
 captioner: ActionCaptioner = None
@@ -81,20 +79,19 @@ async def health():
 async def caption_from_url(request: CaptionRequest):
     """Caption a video given a public URL."""
     import urllib.request
-    
+
     if captioner is None or captioner.model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
-    
+
     try:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             tmp_path = tmp.name
             urllib.request.urlretrieve(request.video_url, tmp_path)
     except Exception as e:
         raise HTTPException(
-            status_code=400,
-            detail=f"Failed to download video: {str(e)}"
+            status_code=400, detail=f"Failed to download video: {str(e)}"
         )
-    
+
     try:
         result = captioner.caption_video(
             video_path=tmp_path,
@@ -102,13 +99,10 @@ async def caption_from_url(request: CaptionRequest):
             num_frames=request.num_frames,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Inference failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
     finally:
         Path(tmp_path).unlink(missing_ok=True)
-    
+
     return CaptionResponse(**result)
 
 
@@ -123,19 +117,19 @@ async def caption_from_upload(
     """Caption a video uploaded directly as a file."""
     if captioner is None or captioner.model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
-    
+
     if not file.filename.endswith((".mp4", ".avi", ".mov", ".mkv")):
         raise HTTPException(
             status_code=400,
-            detail="Unsupported file format. Use mp4, avi, mov, or mkv."
+            detail="Unsupported file format. Use mp4, avi, mov, or mkv.",
         )
-    
+
     with tempfile.NamedTemporaryFile(
         suffix=Path(file.filename).suffix, delete=False
     ) as tmp:
         tmp_path = tmp.name
         shutil.copyfileobj(file.file, tmp)
-    
+
     try:
         result = captioner.caption_video(
             video_path=tmp_path,
@@ -143,11 +137,8 @@ async def caption_from_upload(
             num_frames=num_frames,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Inference failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Inference failed: {str(e)}")
     finally:
         Path(tmp_path).unlink(missing_ok=True)
-    
+
     return CaptionResponse(**result)

@@ -1,10 +1,10 @@
 import os
 import time
-import torch
 from pathlib import Path
-from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
-from qwen_vl_utils import process_vision_info
 
+import torch
+from qwen_vl_utils import process_vision_info
+from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 
 MODEL_ID = os.environ.get("MODEL_PATH", "Qwen/Qwen2-VL-2B-Instruct")
 
@@ -92,8 +92,7 @@ class ActionCaptioner:
             )
 
         generated_ids = [
-            out[len(inp):]
-            for inp, out in zip(inputs.input_ids, output_ids)
+            out[len(inp) :] for inp, out in zip(inputs.input_ids, output_ids)
         ]
 
         caption = self.processor.batch_decode(
