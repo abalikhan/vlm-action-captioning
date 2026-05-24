@@ -8,12 +8,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from serving.app.inference import ActionCaptioner
-
-# global model instance, loaded once at startup
-captioner: ActionCaptioner = None
 from serving.app.logger import InferenceLogger
 
 inference_logger = InferenceLogger()
+
+# global model instance, loaded once at startup
+captioner: ActionCaptioner = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

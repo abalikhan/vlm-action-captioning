@@ -1,12 +1,12 @@
-import gradio as gr
-import requests
-import tempfile
 import os
 from pathlib import Path
 
+import gradio as gr
+import requests
+
 MODAL_ENDPOINT = os.environ.get(
     "MODAL_ENDPOINT",
-    "https://abalikhan--api.modal.run",
+    "https://abalikhan--vlm-action-captioning-api.modal.run",
 )
 
 EXAMPLE_PROMPTS = [
@@ -43,7 +43,8 @@ def caption_video(video_path: str, prompt: str, num_frames: int) -> tuple:
 
     except requests.exceptions.Timeout:
         return (
-            "Request timed out. The model may be cold starting (30-60s). Please try again.",
+            "Request timed out. The model may be cold starting"
+            " (30-60s). Please try again.",
             "",
         )
     except requests.exceptions.RequestException as e:
@@ -66,14 +67,14 @@ with gr.Blocks(
     title="VLM Action Captioning",
     theme=gr.themes.Soft(),
 ) as demo:
-
     gr.Markdown(
         """
         # Video Action Captioning
         ### Powered by Qwen2-VL-2B-Instruct, deployed on Modal serverless GPU
 
-        Upload a short video clip and the model will describe the action in natural language.
-        The first request may take 30-60 seconds due to cold start. Subsequent requests are fast.
+        Upload a short video clip and the model will describe the action
+        in natural language. The first request may take 30-60 seconds due
+        to cold start. Subsequent requests are fast.
 
         **Model:** [Qwen2-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen2-VL-2B-Instruct)
         **Inference:** Modal serverless T4 GPU

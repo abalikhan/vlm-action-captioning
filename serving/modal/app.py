@@ -1,6 +1,10 @@
+from contextlib import asynccontextmanager
+
 import modal
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
+
+from serving.app.logger import InferenceLogger
 
 # define the container image Modal will build and run
 # this mirrors your Dockerfile.serve but uses Modal's image builder
@@ -31,6 +35,7 @@ image = (
         "av>=12.0.0",
         "python-multipart>=0.0.12",
         "huggingface_hub>=0.24.0",
+        "wandb>=0.18.0",
     )
     .env({"PYTHONPATH": "/app"})
     .add_local_dir(
@@ -58,19 +63,20 @@ app = modal.App(
     gpu="T4",
     volumes={MODEL_CACHE_PATH: model_cache},
     scaledown_window=300,  # keep warm for 5 min after last request
-    timeout=120,           # max 2 min per request
+    timeout=120,  # max 2 min per request
 )
 @modal.concurrent(max_inputs=1)
 class ActionCaptioningService:
-
     @modal.enter()
     def load_model(self):
         """Runs once when the container starts. Loads model into GPU memory."""
         import os
+
         os.environ["HF_HOME"] = MODEL_CACHE_PATH
         os.environ["TRANSFORMERS_CACHE"] = MODEL_CACHE_PATH
 
         from serving.app.inference import ActionCaptioner
+
         self.captioner = ActionCaptioner(device="auto")
         self.captioner.load()
 
@@ -110,8 +116,8 @@ class ActionCaptioningService:
         num_frames: int = 8,
     ) -> dict:
         """Downloads video from URL and returns a caption."""
-        import urllib.request
         import tempfile
+        import urllib.request
         from pathlib import Path
 
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
@@ -138,10 +144,21 @@ class ActionCaptioningService:
         }
 
 
+inference_logger = InferenceLogger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    inference_logger.setup()
+    yield
+    inference_logger.finish()
+
+
 web_app = FastAPI(
     title="VLM Action Captioning",
     description="Video action understanding via Qwen2-VL-2B-Instruct on Modal",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 service = ActionCaptioningService()
@@ -161,7 +178,9 @@ async def health():
 @web_app.post("/caption/upload")
 async def caption_upload(
     file: UploadFile = File(...),
-    prompt: str = Form(default="Describe the action happening in this video in one sentence."),
+    prompt: str = Form(
+        default="Describe the action happening in this video in one sentence."
+    ),
     num_frames: int = Form(default=8),
 ):
     if not file.filename.endswith((".mp4", ".avi", ".mov", ".mkv")):
@@ -174,6 +193,13 @@ async def caption_upload(
         prompt=prompt,
         num_frames=num_frames,
     )
+    inference_logger.log_inference(
+        prompt=prompt,
+        caption=result["caption"],
+        latency_ms=result["latency_ms"],
+        num_frames=result["num_frames"],
+        video_filename=file.filename,
+    )
     return result
 
 
@@ -183,6 +209,13 @@ async def caption_url(request: URLRequest):
         video_url=request.video_url,
         prompt=request.prompt,
         num_frames=request.num_frames,
+    )
+    inference_logger.log_inference(
+        prompt=request.prompt,
+        caption=result["caption"],
+        latency_ms=result["latency_ms"],
+        num_frames=result["num_frames"],
+        video_filename=None,
     )
     return result
 
@@ -194,7 +227,7 @@ async def caption_url(request: URLRequest):
     scaledown_window=300,
     timeout=120,
 )
-@modal.asgi_app(label="api")
+@modal.asgi_app(label="vlm-action-captioning-api")
 def fastapi_app():
     return web_app
 
@@ -209,6 +242,7 @@ def download_model():
     Run this once with: modal run serving/modal/app.py::download_model
     """
     import os
+
     from huggingface_hub import snapshot_download
 
     MODEL_ID = "Qwen/Qwen2-VL-2B-Instruct"

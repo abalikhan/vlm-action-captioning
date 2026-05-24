@@ -4,6 +4,7 @@ from typing import Optional
 
 try:
     import wandb
+
     WANDB_AVAILABLE = True
 except ImportError:
     WANDB_AVAILABLE = False
