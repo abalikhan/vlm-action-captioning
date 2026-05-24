@@ -47,3 +47,46 @@ jobs:
           tags: vlm-action-captioning:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-modal:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Modal
+        run: pip install modal
+
+      - name: Deploy to Modal
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: modal deploy serving/modal/app.py
+
+  deploy-spaces:
+    runs-on: ubuntu-latest
+    needs: deploy-modal
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push to HF Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "ci@github.com"
+          git config --global user.name "GitHub Actions"
+          git clone https://oauth2:$HF_TOKEN@huggingface.co/spaces/abidali1128/vlm-action-captioning hf_space
+          cp serving/gradio/app.py hf_space/
+          cp serving/gradio/requirements.txt hf_space/
+          cp serving/gradio/README.md hf_space/
+          cd hf_space
+          git add .
+          git diff --staged --quiet || git commit -m "deploy: update from GitHub ${{ github.sha }}"
+          git push

@@ -6,7 +6,7 @@ from pathlib import Path
 
 MODAL_ENDPOINT = os.environ.get(
     "MODAL_ENDPOINT",
-    "https://abalikhan--vlm-action-captioning-fastapi-app.modal.run",
+    "https://abalikhan--api.modal.run",
 )
 
 EXAMPLE_PROMPTS = [
@@ -124,4 +124,20 @@ with gr.Blocks(
             )
             check_health_btn = gr.Button(
                 "Check Endpoint Status",
-                variant=
+                variant="secondary",
+            )
+
+    submit_btn.click(
+        fn=caption_video,
+        inputs=[video_input, prompt_input, num_frames_input],
+        outputs=[caption_output, metadata_output],
+    )
+
+    check_health_btn.click(
+        fn=check_endpoint_health,
+        inputs=[],
+        outputs=[health_output],
+    )
+
+if __name__ == "__main__":
+    demo.launch()

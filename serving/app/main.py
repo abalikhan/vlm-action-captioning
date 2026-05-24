@@ -11,16 +11,18 @@ from serving.app.inference import ActionCaptioner
 
 # global model instance, loaded once at startup
 captioner: ActionCaptioner = None
+from serving.app.logger import InferenceLogger
 
+inference_logger = InferenceLogger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup: load model into memory once
     global captioner
     captioner = ActionCaptioner(device="auto")
     captioner.load()
+    inference_logger.setup()
     yield
-    # shutdown: nothing to clean up explicitly
+    inference_logger.finish()
     del captioner
 
 
@@ -103,6 +105,13 @@ async def caption_from_url(request: CaptionRequest):
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
+    inference_logger.log_inference(
+        prompt=request.prompt,
+        caption=result["caption"],
+        latency_ms=result["latency_ms"],
+        num_frames=result["num_frames"],
+        video_filename=None,
+    )
     return CaptionResponse(**result)
 
 
@@ -141,4 +150,11 @@ async def caption_from_upload(
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
+    inference_logger.log_inference(
+        prompt=prompt,
+        caption=result["caption"],
+        latency_ms=result["latency_ms"],
+        num_frames=result["num_frames"],
+        video_filename=file.filename,
+    )
     return CaptionResponse(**result)

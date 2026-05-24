@@ -32,6 +32,7 @@ serve = [
     "vllm>=0.6.0",
     "modal>=0.64.0",
     "gradio>=4.40.0",
+    "wandb>=0.18.0",
 ]
 dev = [
     "vlm-action-captioning[api]",

@@ -48,3 +48,17 @@ push-ecr:
 		docker login --username AWS --password-stdin $(ECR_REGISTRY)
 	docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(ECR_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 	docker push $(ECR_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+modal-download-model:
+	modal run serving/modal/app.py::download_model
+
+modal-deploy:
+	modal deploy serving/modal/app.py
+
+modal-serve-dev:
+	modal serve serving/modal/app.py
+deploy-spaces:
+	cd hf-space-tmp && git push || \
+	(git clone https://huggingface.co/spaces/your-hf-username/vlm-action-captioning hf-space-tmp && \
+	cp serving/gradio/app.py hf-space-tmp/ && \
+	cp serving/gradio/requirements.txt hf-space-tmp/ && \
+	cd hf-space-tmp && git add . && git commit -m "update demo" && git push)

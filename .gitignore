@@ -223,3 +223,6 @@ model_weights/
 *.safetensors
 *.gguf
 .hf-cache/
+
+# HuggingFace Space
+hf-space-tmp/
